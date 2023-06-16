@@ -73,6 +73,13 @@ create_namespace() {
 # Function to deploy Nginx pods
 deploy_nginx() {
     log_step "Deploying Nginx pods with topology spread constraint..."
+
+    # Check if namespace exists, create it if necessary
+    kubectl get namespace "$namespace" &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        create_namespace "$namespace"
+    fi
+
     kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -100,8 +107,10 @@ spec:
           matchLabels:
             app: nginx
 EOF
+
     log_step "Nginx pods deployed successfully."
 }
+
 
 # Function to install Descheduler
 install_descheduler() {
