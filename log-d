@@ -1,0 +1,27 @@
+=== Deploying Nginx pods with topology spread constraint... ===
+error: error parsing STDIN: error converting YAML to JSON: yaml: line 16: did not find expected key
+=== Nginx pods deployed successfully. ===
+=== Installing Descheduler... ===
+serviceaccount/descheduler-sa created
+clusterrole.rbac.authorization.k8s.io/descheduler-cluster-role created
+clusterrolebinding.rbac.authorization.k8s.io/descheduler-cluster-role-binding created
+configmap/descheduler-policy-configmap created
+deployment.apps/descheduler created
+=== Descheduler installed successfully. ===
+=== Waiting for 60 seconds... ===
+=== Checking Descheduler logs... ===
+I0616 20:27:35.966719       1 lownodeutilization.go:149] "Criteria for a node above target utilization" CPU=50 Mem=50 Pods=50
+I0616 20:27:35.966730       1 lownodeutilization.go:150] "Number of overutilized nodes" totalNumber=0
+I0616 20:27:35.966740       1 lownodeutilization.go:163] "All nodes are underutilized, nothing to do here"
+I0616 20:27:35.966782       1 removeduplicates.go:103] "Processing node" node="demo-cluster-control-plane"
+I0616 20:27:35.966875       1 removeduplicates.go:103] "Processing node" node="demo-cluster-worker"
+I0616 20:27:35.966918       1 removeduplicates.go:103] "Processing node" node="demo-cluster-worker2"
+I0616 20:27:35.966947       1 pod_antiaffinity.go:84] "Processing node" node="demo-cluster-control-plane"
+I0616 20:27:35.966979       1 pod_antiaffinity.go:84] "Processing node" node="demo-cluster-worker"
+I0616 20:27:35.966990       1 pod_antiaffinity.go:84] "Processing node" node="demo-cluster-worker2"
+I0616 20:27:35.967023       1 descheduler.go:426] "Number of evicted pods" totalEvicted=0
+=== Descheduler logs checked. ===
+=== Cleaning up... ===
+Deleting cluster "demo-cluster" ...
+=== Cleanup completed. ===
+=== Demo completed. ===
