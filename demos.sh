@@ -120,20 +120,55 @@ wait_for_duration() {
     sleep "$1"
 }
 
-# Function to check Descheduler logs
+# Function to check Descheduler logs and perform verifications
 check_descheduler_logs() {
     log_step "Checking Descheduler logs..."
-    kubectl logs -l app=descheduler -n kube-system
 
-    log_step "Verifying Descheduler logs for evictions..."
-    if kubectl logs -l app=descheduler -n kube-system | grep "Number of evicted pods"; then
-        log_step "Evictions found in Descheduler logs."
+    # Verify policy configuration
+    log_step "Verifying policy configuration..."
+    policy_config=$(kubectl get configmap descheduler-policy-configmap -n kube-system -o jsonpath='{.data.policy\.yaml}')
+    if [[ -z "$policy_config" ]]; then
+        log_step "Error: Policy configuration not found."
     else
-        log_step "No evictions found in Descheduler logs."
+        log_step "Policy configuration found:"
+        log_step "$policy_config"
+    fi
+
+    # Check Descheduler deployment logs
+    log_step "Checking Descheduler deployment logs..."
+    deployment_logs=$(kubectl logs -n kube-system deployment/descheduler)
+    if echo "$deployment_logs" | grep -q "error"; then
+        log_step "Error: Descheduler deployment logs contain error messages."
+    elif echo "$deployment_logs" | grep -q "warning"; then
+        log_step "Warning: Descheduler deployment logs contain warning messages."
+    else
+        log_step "Descheduler deployment logs checked successfully."
+    fi
+
+    # Verify pod labels
+    log_step "Verifying pod labels..."
+    pod_labels=$(kubectl get pods -n "$namespace" --selector=app=nginx -o jsonpath='{range .items[*]}{.metadata.name} {.metadata.labels}{"\n"}{end}')
+    if [[ -z "$pod_labels" ]]; then
+        log_step "Error: No pods with label app=nginx found."
+    else
+        log_step "Pod labels verified:"
+        log_step "$pod_labels"
+    fi
+
+    # Check cluster size and node utilization
+    log_step "Checking cluster size and node utilization..."
+    cluster_size=$(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | wc -l)
+    if [[ "$cluster_size" -lt 2 ]]; then
+        log_step "Warning: Cluster size is too small. Skipping evictions."
+    else
+        node_utilization=$(kubectl top nodes)
+        log_step "Node utilization:"
+        log_step "$node_utilization"
     fi
 
     log_step "Descheduler logs checked."
 }
+
 
 # Function to perform cleanup
 cleanup() {
