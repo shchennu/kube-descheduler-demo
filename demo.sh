@@ -9,7 +9,10 @@ log_step() {
 install_docker() {
     if ! command -v docker &> /dev/null; then
         log_step "Installing Docker..."
-        # Add installation steps for Docker according to your OS and distribution
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo systemctl start docker
+        sudo systemctl enable docker
         log_step "Docker installed successfully."
     else
         log_step "Docker is already installed."
@@ -20,7 +23,12 @@ install_docker() {
 install_kubectl() {
     if ! command -v kubectl &> /dev/null; then
         log_step "Installing kubectl..."
-        # Add installation steps for kubectl according to your OS and distribution
+        sudo apt-get update
+        sudo apt-get install -y apt-transport-https ca-certificates curl
+        sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+        sudo apt-get update
+        sudo apt-get install -y kubectl
         log_step "kubectl installed successfully."
     else
         log_step "kubectl is already installed."
@@ -31,7 +39,9 @@ install_kubectl() {
 install_kind() {
     if ! command -v kind &> /dev/null; then
         log_step "Installing Kind..."
-        # Add installation steps for Kind according to your OS and distribution
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
         log_step "Kind installed successfully."
     else
         log_step "Kind is already installed."
@@ -42,7 +52,8 @@ install_kind() {
 install_kustomize() {
     if ! command -v kustomize &> /dev/null; then
         log_step "Installing Kustomize..."
-        # Add installation steps for Kustomize according to your OS and distribution
+        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        sudo mv kustomize /usr/local/bin/
         log_step "Kustomize installed successfully."
     else
         log_step "Kustomize is already installed."
