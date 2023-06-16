@@ -23,11 +23,17 @@ spec:
           args:
             - --v=3
             - --policy-config-file=/policy-dir/policy.yaml
+            - --kubeconfig=/path/to/kubeconfig
           resources:
             {}
           volumeMounts:
             - mountPath: /policy-dir
               name: policy-volume
+          env:
+            - name: "POD_NAMESPACE"
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
       volumes:
         - name: policy-volume
           configMap:
@@ -44,11 +50,11 @@ data:
     kind: "DeschedulerPolicy"
     profiles:
       - name: default
-        pluginConfig:
-        - name: "RemovePodsViolatingTopologySpreadConstraint"
-          args:
+        enabled:
+          - "RemovePodsViolatingTopologySpreadConstraint"
+        params:
+          RemovePodsViolatingTopologySpreadConstraint:
             includeSoftConstraints: false
-        plugins:
-          balance:
-            enabled:
-            - "RemovePodsViolatingTopologySpreadConstraint"
+            targetNamespace: "descheduler-demo"
+            targetKind: "Pod"
+            labelSelector: "app=nginx"

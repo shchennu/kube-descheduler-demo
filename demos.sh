@@ -116,9 +116,11 @@ wait_for_duration() {
     sleep "$1"
 }
 
-# Function to check Descheduler logs
+# Function to check Descheduler logs and list pods
 check_descheduler_logs() {
     log_step "Checking Descheduler logs..."
+    kubectl get pods -n "$namespace"
+    echo ""
     kubectl logs -l app=descheduler -n kube-system
     log_step "Descheduler logs checked."
 }
