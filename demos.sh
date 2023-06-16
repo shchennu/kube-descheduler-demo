@@ -7,8 +7,9 @@ log_step() {
 
 # Function to install Docker
 install_docker() {
+    log_step "Checking Docker installation..."
     if ! command -v docker &> /dev/null; then
-        log_step "Installing Docker..."
+        log_step "Docker not found. Installing Docker..."
         # Add installation steps for Docker according to your OS and distribution
         log_step "Docker installed successfully."
     else
@@ -18,8 +19,9 @@ install_docker() {
 
 # Function to install kubectl
 install_kubectl() {
+    log_step "Checking kubectl installation..."
     if ! command -v kubectl &> /dev/null; then
-        log_step "Installing kubectl..."
+        log_step "kubectl not found. Installing kubectl..."
         # Add installation steps for kubectl according to your OS and distribution
         log_step "kubectl installed successfully."
     else
@@ -29,8 +31,9 @@ install_kubectl() {
 
 # Function to install Kind
 install_kind() {
+    log_step "Checking Kind installation..."
     if ! command -v kind &> /dev/null; then
-        log_step "Installing Kind..."
+        log_step "Kind not found. Installing Kind..."
         # Add installation steps for Kind according to your OS and distribution
         log_step "Kind installed successfully."
     else
@@ -40,8 +43,9 @@ install_kind() {
 
 # Function to install Kustomize
 install_kustomize() {
+    log_step "Checking Kustomize installation..."
     if ! command -v kustomize &> /dev/null; then
-        log_step "Installing Kustomize..."
+        log_step "Kustomize not found. Installing Kustomize..."
         # Add installation steps for Kustomize according to your OS and distribution
         log_step "Kustomize installed successfully."
     else
@@ -73,13 +77,6 @@ create_namespace() {
 # Function to deploy Nginx pods
 deploy_nginx() {
     log_step "Deploying Nginx pods with topology spread constraint..."
-
-    # Check if namespace exists, create it if necessary
-    kubectl get namespace "$namespace" &> /dev/null
-    if [[ $? -ne 0 ]]; then
-        create_namespace "$namespace"
-    fi
-
     kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -107,10 +104,8 @@ spec:
           matchLabels:
             app: nginx
 EOF
-
     log_step "Nginx pods deployed successfully."
 }
-
 
 # Function to install Descheduler
 install_descheduler() {
@@ -125,12 +120,18 @@ wait_for_duration() {
     sleep "$1"
 }
 
-# Function to check Descheduler logs and list pods
+# Function to check Descheduler logs
 check_descheduler_logs() {
     log_step "Checking Descheduler logs..."
-    kubectl get pods -n "$namespace"
-    echo ""
     kubectl logs -l app=descheduler -n kube-system
+
+    log_step "Verifying Descheduler logs for evictions..."
+    if kubectl logs -l app=descheduler -n kube-system | grep "Number of evicted pods"; then
+        log_step "Evictions found in Descheduler logs."
+    else
+        log_step "No evictions found in Descheduler logs."
+    fi
+
     log_step "Descheduler logs checked."
 }
 
