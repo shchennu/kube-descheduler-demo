@@ -55,6 +55,3 @@ data:
         params:
           RemovePodsViolatingTopologySpreadConstraint:
             includeSoftConstraints: false
-            targetNamespace: "descheduler-demo"
-            targetKind: "Pod"
-            labelSelector: "app=nginx"
