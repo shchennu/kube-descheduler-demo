@@ -1,0 +1,11 @@
+=== Checking Descheduler logs... ===
+I0616 20:09:52.269405       1 reflector.go:257] Listing and watching *v1.PriorityClass from k8s.io/client-go/informers/factory.go:134
+I0616 20:09:52.269514       1 reflector.go:221] Starting reflector *v1.Namespace (0s) from k8s.io/client-go/informers/factory.go:134
+I0616 20:09:52.269550       1 reflector.go:257] Listing and watching *v1.Namespace from k8s.io/client-go/informers/factory.go:134
+I0616 20:09:52.371392       1 node.go:49] "Node lister returned empty list, now fetch directly"
+I0616 20:09:52.375135       1 descheduler.go:308] "The cluster size is 0 or 1 meaning eviction causes service disruption or degradation. So aborting.."
+I0616 20:09:52.375315       1 reflector.go:227] Stopping reflector *v1.Pod (0s) from k8s.io/client-go/informers/factory.go:134
+I0616 20:09:52.375459       1 reflector.go:227] Stopping reflector *v1.PriorityClass (0s) from k8s.io/client-go/informers/factory.go:134
+I0616 20:09:52.375370       1 tlsconfig.go:255] "Shutting down DynamicServingCertificateController"
+I0616 20:09:52.375392       1 reflector.go:227] Stopping reflector *v1.Namespace (0s) from k8s.io/client-go/informers/factory.go:134
+I0616 20:09:52.375510       1 secure_serving.go:255] Stopped listening on [::]:10258
