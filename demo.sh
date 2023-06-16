@@ -108,12 +108,15 @@ fi
 log_step "Creating Kind cluster ($CLUSTER_NAME)..."
 kind create cluster --name $CLUSTER_NAME --config kind-config.yaml
 
-# Set kubeconfig to use the created cluster
-export KUBECONFIG="$(kind get kubeconfig-path --name $CLUSTER_NAME)"
-
 # Label nodes to simulate zones
 log_step "Labeling nodes..."
-kubectl label nodes --all topology.kubernetes.io/zone=zone1
+kubectl label nodes $CLUSTER_NAME-control-plane topology.kubernetes.io/zone=zone1
+kubectl label nodes $CLUSTER_NAME-worker topology.kubernetes.io/zone=zone1
+kubectl label nodes $CLUSTER_NAME-worker2 topology.kubernetes.io/zone=zone2
+
+# Create the namespace
+log_step "Creating namespace $NAMESPACE..."
+kubectl create namespace $NAMESPACE
 
 # Create a Deployment with a TopologySpreadConstraint
 log_step "Creating Deployment with TopologySpreadConstraint..."
@@ -178,6 +181,4 @@ log_step "Checking Descheduler logs..."
 kubectl logs -l app=descheduler -n kube-system
 
 # Clean up
-if [[ "$CLEANUP" == "true" ]]; then
-  cleanup
-fi
+cleanup
