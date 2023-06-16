@@ -20,12 +20,8 @@ command_exists() {
 install_docker() {
   log_step "Installing Docker..."
   if ! command_exists docker; then
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker "$USER"
-    sudo systemctl enable docker
-    sudo systemctl start docker
-    rm get-docker.sh
+    echo "Docker is not installed. Please install Docker before running this script."
+    exit 1
   else
     echo "Docker is already installed."
   fi
@@ -35,14 +31,23 @@ install_docker() {
 install_kubectl() {
   log_step "Installing kubectl..."
   if ! command_exists kubectl; then
-    sudo apt-get update
-    sudo apt-get install -y apt-transport-https ca-certificates curl
-    curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-    echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-    sudo apt-get update
-    sudo apt-get install -y kubectl
+    echo "kubectl is not installed. Please install kubectl before running this script."
+    exit 1
   else
     echo "kubectl is already installed."
+  fi
+}
+
+# Function to install Kind if not already installed
+install_kind() {
+  log_step "Installing Kind..."
+  if ! command_exists kind; then
+    echo "Kind is not installed. Installing Kind..."
+    curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+    chmod +x ./kind
+    sudo mv ./kind /usr/local/bin/kind
+  else
+    echo "Kind is already installed."
   fi
 }
 
@@ -91,24 +96,16 @@ install_kubectl
 # Parse script parameters
 parse_parameters "$@"
 
-# Install Kind
-log_step "Installing Kind..."
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
-chmod +x ./kind
-sudo mv ./kind /usr/local/bin/kind
+# Check Kind installation
+if ! command_exists kind; then
+  echo "Kind is not installed. Installing Kind..."
+  curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+  chmod +x ./kind
+  sudo mv ./kind /usr/local/bin/kind
+fi
 
 # Create a multi-node cluster using Kind
 log_step "Creating Kind cluster ($CLUSTER_NAME)..."
-cat <<EOF > kind-config.yaml
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-- role: worker
-- role: worker
-- role: worker
-EOF
-
 kind create cluster --name $CLUSTER_NAME --config kind-config.yaml
 
 # Set kubeconfig to use the created cluster
@@ -119,8 +116,8 @@ log_step "Labeling nodes..."
 kubectl label nodes --all topology.kubernetes.io/zone=zone1
 
 # Create a Deployment with a TopologySpreadConstraint
-log_step "Creating $APP_NAME Deployment in namespace $NAMESPACE..."
-cat <<EOF | kubectl apply -f -
+log_step "Creating Deployment with TopologySpreadConstraint..."
+kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -150,15 +147,15 @@ EOF
 
 # Install Descheduler
 log_step "Installing Descheduler..."
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/descheduler/main/kubernetes-example-policy.yaml
+kubectl apply -f kubernetes-descheduler.yaml
 
 # Create the Descheduler Policy ConfigMap
 log_step "Creating Descheduler Policy ConfigMap..."
-cat <<EOF > descheduler-policy.yaml
+cat <<EOF > policy.yaml
 apiVersion: "descheduler/v1alpha2"
 kind: "DeschedulerPolicy"
 profiles:
-  - name: ProfileName
+  - name: default
     pluginConfig:
     - name: "RemovePodsViolatingTopologySpreadConstraint"
       args:
@@ -166,22 +163,21 @@ profiles:
     plugins:
       balance:
         enabled:
-          - "RemovePodsViolatingTopologySpreadConstraint"
+        - "RemovePodsViolatingTopologySpreadConstraint"
 EOF
 
-kubectl create configmap descheduler-policy-configmap --from-file=descheduler-policy.yaml -n kube-system
+kubectl create configmap descheduler-policy-configmap --from-file=policy.yaml -n kube-system
 
-# Update Descheduler Configuration
-log_step "Updating Descheduler Configuration..."
-kubectl edit deployment descheduler -n kube-system
-
-# Wait for Descheduler to take effect
-log_step "Waiting for Descheduler..."
+echo
+echo "=== Demo setup complete ==="
+echo "Sleeping for $SLEEP_DURATION seconds before checking Descheduler logs..."
 sleep $SLEEP_DURATION
 
-# Check Descheduler logs
+# Checking Descheduler logs
 log_step "Checking Descheduler logs..."
 kubectl logs -l app=descheduler -n kube-system
 
-# Cleanup
-cleanup
+# Clean up
+if [[ "$CLEANUP" == "true" ]]; then
+  cleanup
+fi
