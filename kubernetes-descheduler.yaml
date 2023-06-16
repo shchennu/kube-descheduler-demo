@@ -22,6 +22,7 @@ spec:
             - /descheduler
           args:
             - --v=3
+            - --policy-config-file=/policy-dir/policy.yaml
           resources:
             {}
           volumeMounts:
