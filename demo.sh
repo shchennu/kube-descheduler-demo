@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Function to log step messages
+# Function to print log step
 log_step() {
+    echo ""
     echo "=== $1 ==="
+    echo ""
 }
 
 # Function to install Docker
@@ -10,6 +12,10 @@ install_docker() {
     if ! command -v docker &> /dev/null; then
         log_step "Installing Docker..."
         # Add installation steps for Docker according to your OS and distribution
+        # For example, on Ubuntu:
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo usermod -aG docker "$USER"
         log_step "Docker installed successfully."
     else
         log_step "Docker is already installed."
@@ -21,6 +27,9 @@ install_kubectl() {
     if ! command -v kubectl &> /dev/null; then
         log_step "Installing kubectl..."
         # Add installation steps for kubectl according to your OS and distribution
+        # For example, on Ubuntu:
+        sudo apt-get update
+        sudo apt-get install -y kubectl
         log_step "kubectl installed successfully."
     else
         log_step "kubectl is already installed."
@@ -32,6 +41,10 @@ install_kind() {
     if ! command -v kind &> /dev/null; then
         log_step "Installing Kind..."
         # Add installation steps for Kind according to your OS and distribution
+        # For example, on Ubuntu:
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
         log_step "Kind installed successfully."
     else
         log_step "Kind is already installed."
@@ -43,40 +56,43 @@ install_kustomize() {
     if ! command -v kustomize &> /dev/null; then
         log_step "Installing Kustomize..."
         # Add installation steps for Kustomize according to your OS and distribution
+        # For example, on Linux:
+        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        sudo mv kustomize /usr/local/bin/
         log_step "Kustomize installed successfully."
     else
         log_step "Kustomize is already installed."
     fi
 }
 
-# Function to create Kind cluster
+# Function to create a Kind cluster
 create_cluster() {
     log_step "Creating Kind cluster ($1)..."
     kind create cluster --name "$1"
-    log_step "Kind cluster ($1) created successfully."
+    log_step "Kind cluster created successfully."
 }
 
-# Function to label nodes
+# Function to label the nodes
 label_nodes() {
     log_step "Labeling nodes..."
     kubectl label nodes --all topology.kubernetes.io/zone=zone1
     log_step "Nodes labeled successfully."
 }
 
-# Function to deploy Nginx pods
+# Function to deploy the Nginx application
 deploy_nginx() {
-    log_step "Deploying Nginx pods with topology spread constraint..."
+    log_step "Creating Nginx Deployment..."
     kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx-deployment
-  namespace: "$namespace"
+  namespace: descheduler-demo
 spec:
+  replicas: 6
   selector:
     matchLabels:
       app: nginx
-  replicas: 6
   template:
     metadata:
       labels:
@@ -93,7 +109,7 @@ spec:
           matchLabels:
             app: nginx
 EOF
-    log_step "Nginx pods deployed successfully."
+    log_step "Nginx Deployment created successfully."
 }
 
 # Function to install Descheduler
@@ -103,80 +119,54 @@ install_descheduler() {
     log_step "Descheduler installed successfully."
 }
 
-# Function to wait for a duration
-wait_for_duration() {
-    log_step "Waiting for $1 seconds..."
-    sleep "$1"
-}
-
-# Function to check Descheduler logs
-check_descheduler_logs() {
+# Function to display Descheduler logs
+display_descheduler_logs() {
     log_step "Checking Descheduler logs..."
     kubectl logs -l app=descheduler -n kube-system
-    log_step "Descheduler logs checked."
 }
 
-# Function to perform cleanup
+# Function to cleanup
 cleanup() {
     log_step "Cleaning up..."
     kind delete cluster --name "$1"
-    log_step "Cleanup completed."
+    log_step "Cleanup completed successfully."
 }
 
-# Function to print usage
-print_usage() {
-    echo "Usage: ./demo.sh [--sleep SLEEP_DURATION] [--app APP_NAME] [--namespace NAMESPACE] [--cluster CLUSTER_NAME]"
-    echo ""
-    echo "Options:"
-    echo "  --sleep        Sleep duration in seconds before checking Descheduler logs (default: 60)"
-    echo "  --app          Name of the application (default: descheduler-app)"
-    echo "  --namespace    Namespace for the application (default: descheduler-demo)"
-    echo "  --cluster      Name of the Kind cluster (default: demo-cluster)"
-}
-
-# Function for main script execution
+# Main function
 main() {
-    # Default values
-    sleep_duration=60
-    app_name="descheduler-app"
-    namespace="descheduler-demo"
-    cluster_name="demo-cluster"
-
-    # Parse command-line options
+    # Parse script arguments
     while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-            --sleep) sleep_duration="$2"; shift ;;
-            --app) app_name="$2"; shift ;;
-            --namespace) namespace="$2"; shift ;;
-            --cluster) cluster_name="$2"; shift ;;
-            *) echo "Unknown parameter: $1"; print_usage; exit 1 ;;
+        case $1 in
+            --cluster-name) CLUSTER_NAME="$2"; shift ;;
+            *) log_step "Unknown parameter passed: $1"; exit 1 ;;
         esac
         shift
     done
 
-    log_step "Starting Demo..."
-
+    # Install prerequisites
     install_docker
     install_kubectl
     install_kind
     install_kustomize
 
-    create_cluster "$cluster_name"
+    # Create Kind cluster
+    create_cluster "$CLUSTER_NAME"
 
+    # Label nodes
     label_nodes
 
+    # Deploy Nginx
     deploy_nginx
 
+    # Install Descheduler
     install_descheduler
 
-    wait_for_duration "$sleep_duration"
+    # Display Descheduler logs
+    display_descheduler_logs
 
-    check_descheduler_logs
-
-    cleanup "$cluster_name"
-
-    log_step "Demo completed."
+    # Cleanup
+    cleanup "$CLUSTER_NAME"
 }
 
-# Run the main script
+# Run the main function
 main "$@"
