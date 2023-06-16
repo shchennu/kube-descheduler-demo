@@ -1,3 +1,43 @@
+./demo.sh --sleep 60 --app descheduler-app --namespace descheduler-demo --cluster demo-cluster=== Starting Demo... ===
+=== Docker is already installed. ===
+=== kubectl is already installed. ===
+=== Kind is already installed. ===
+=== Installing Kustomize... ===
+v5.0.3
+kustomize installed to /pang/srchennu/descheduler/kustomize
+=== Kustomize installed successfully. ===
+=== Creating namespace (descheduler-demo)... ===
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+=== Namespace (descheduler-demo) created successfully. ===
+=== Creating Kind cluster (demo-cluster)... ===
+Creating cluster "demo-cluster" ...
+ ✓ Ensuring node image (kindest/node:v1.21.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-demo-cluster"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-demo-cluster
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+=== Kind cluster (demo-cluster) created successfully. ===
+=== Labeling nodes... ===
+node/demo-cluster-control-plane labeled
+=== Nodes labeled successfully. ===
+=== Deploying Nginx pods with topology spread constraint... ===
+Error from server (NotFound): error when creating "STDIN": namespaces "descheduler-demo" not found
+=== Nginx pods deployed successfully. ===
+=== Installing Descheduler... ===
+serviceaccount/descheduler-sa created
+clusterrole.rbac.authorization.k8s.io/descheduler-cluster-role created
+clusterrolebinding.rbac.authorization.k8s.io/descheduler-cluster-role-binding created
+configmap/descheduler-policy-configmap created
+deployment.apps/descheduler created
+=== Descheduler installed successfully. ===
+=== Waiting for 60 seconds... ===
 === Checking Descheduler logs... ===
 I0616 20:09:52.269405       1 reflector.go:257] Listing and watching *v1.PriorityClass from k8s.io/client-go/informers/factory.go:134
 I0616 20:09:52.269514       1 reflector.go:221] Starting reflector *v1.Namespace (0s) from k8s.io/client-go/informers/factory.go:134
@@ -9,3 +49,8 @@ I0616 20:09:52.375459       1 reflector.go:227] Stopping reflector *v1.PriorityC
 I0616 20:09:52.375370       1 tlsconfig.go:255] "Shutting down DynamicServingCertificateController"
 I0616 20:09:52.375392       1 reflector.go:227] Stopping reflector *v1.Namespace (0s) from k8s.io/client-go/informers/factory.go:134
 I0616 20:09:52.375510       1 secure_serving.go:255] Stopped listening on [::]:10258
+=== Descheduler logs checked. ===
+=== Cleaning up... ===
+Deleting cluster "demo-cluster" ...
+=== Cleanup completed. ===
+=== Demo completed. ===
