@@ -48,8 +48,10 @@ data:
   policy.yaml: |
     apiVersion: "descheduler/v1alpha2"
     kind: "DeschedulerPolicy"
-    strategies:
-      "RemovePodsViolatingTopologySpreadConstraint":
-        enabled: true
+    profiles:
+      - name: default
+        enabled:
+          - "RemovePodsViolatingTopologySpreadConstraint"
         params:
-          includeSoftConstraints: false
+          RemovePodsViolatingTopologySpreadConstraint:
+            includeSoftConstraints: false
