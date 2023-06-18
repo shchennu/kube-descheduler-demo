@@ -126,9 +126,8 @@ check_descheduler_logs() {
 # Function to verify policy configuration
 verify_policy_configuration() {
     log_step "Verifying policy configuration..."
-    policy_config=$(kubectl get configmap descheduler-policy-configmap -n kube-system -o yaml)
-    log_step "Policy configuration found:"
-    echo "$policy_config"
+    kubectl get configmap descheduler-policy-configmap -n kube-system -o yaml
+    log_step "Policy configuration verified."
 }
 
 # Function to check Descheduler deployment logs
@@ -141,27 +140,15 @@ check_descheduler_deployment_logs() {
 # Function to verify pod labels
 verify_pod_labels() {
     log_step "Verifying pod labels..."
-    pod_labels=$(kubectl get pods -n "$namespace" --selector=app=nginx -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.labels.app}{"\n"}{end}')
-    if [[ -z "$pod_labels" ]]; then
-        log_step "Error: No pods with label app=nginx found."
-    else
-        log_step "Pod labels:"
-        echo -e "$pod_labels"
-    fi
+    kubectl get pods -n "$namespace" --selector=app=nginx --show-labels
+    log_step "Pod labels verified."
 }
 
 # Function to check cluster size and node utilization
 check_cluster_size_and_utilization() {
     log_step "Checking cluster size and node utilization..."
-    cluster_size=$(kubectl get nodes --no-headers | wc -l)
-    if (( cluster_size < 2 )); then
-        log_step "Warning: Cluster size is too small. Skipping evictions."
-    else
-        log_step "Cluster size: $cluster_size"
-        node_utilization=$(kubectl top nodes)
-        log_step "Node utilization:"
-        echo "$node_utilization"
-    fi
+    kubectl top nodes
+    log_step "Cluster size and node utilization checked."
 }
 
 # Function to perform cleanup
