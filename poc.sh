@@ -16,6 +16,13 @@ install_kubectl() {
     fi
 }
 
+# Function to set the cluster context
+set_cluster_context() {
+    log_step "Setting cluster context to 'dt'..."
+    kubectl config use-context dt
+    log_step "Cluster context set to 'dt'."
+}
+
 # Function to create namespace
 create_namespace() {
     log_step "Creating namespace ($1)..."
@@ -59,7 +66,7 @@ EOF
 # Function to install Descheduler
 install_descheduler() {
     log_step "Installing Descheduler..."
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/descheduler/master/examples/kubernetes-descheduler.yaml
+    kubectl apply -f kubernetes-descheduler.yaml --namespace "$namespace"
     log_step "Descheduler installed successfully."
 }
 
@@ -115,6 +122,8 @@ main() {
     log_step "Starting Demo..."
 
     install_kubectl
+
+    set_cluster_context
 
     # Check if namespace exists, create it if necessary
     kubectl get namespace "$namespace" &> /dev/null
