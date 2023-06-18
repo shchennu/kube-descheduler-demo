@@ -119,36 +119,12 @@ wait_for_duration() {
 # Function to check Descheduler logs for evictions
 check_descheduler_logs() {
     log_step "Checking Descheduler logs for evictions..."
-    kubectl logs -l app=descheduler -n kube-system | grep "Number of evicted pods"
-    log_step "Descheduler logs checked."
-}
-
-# Function to verify policy configuration
-verify_policy_configuration() {
-    log_step "Verifying policy configuration..."
-    kubectl get cm descheduler-policy-configmap -n kube-system -o yaml
-    log_step "Policy configuration verified."
-}
-
-# Function to check Descheduler deployment logs
-check_descheduler_deployment_logs() {
-    log_step "Checking Descheduler deployment logs..."
-    kubectl logs -n kube-system deployment/descheduler
-    log_step "Descheduler deployment logs checked."
-}
-
-# Function to verify pod labels
-verify_pod_labels() {
-    log_step "Verifying pod labels..."
-    kubectl get pods -n "$namespace" --selector=app=nginx --show-labels
-    log_step "Pod labels verified."
-}
-
-# Function to check cluster size and node utilization
-check_cluster_size_and_utilization() {
-    log_step "Checking cluster size and node utilization..."
-    kubectl top nodes
-    log_step "Cluster size and node utilization checked."
+    kubectl logs -l app=descheduler -n kube-system | grep "Eviction"
+    if [ $? -eq 0 ]; then
+        log_step "Evictions found in Descheduler logs."
+    else
+        log_step "No evictions found in Descheduler logs."
+    fi
 }
 
 # Function to perform cleanup
@@ -221,14 +197,6 @@ main() {
     wait_for_duration "$sleep_duration"
 
     check_descheduler_logs
-
-    verify_policy_configuration
-
-    check_descheduler_deployment_logs
-
-    verify_pod_labels
-
-    check_cluster_size_and_utilization
 
     cleanup "$cluster_name"
 
