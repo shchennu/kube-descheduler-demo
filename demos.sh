@@ -116,47 +116,39 @@ wait_for_duration() {
     sleep "$1"
 }
 
-# Function to check Descheduler logs
+# Function to check Descheduler logs for evictions
 check_descheduler_logs() {
-    log_step "Checking Descheduler logs..."
-    kubectl logs -l app=descheduler -n kube-system
+    log_step "Checking Descheduler logs for evictions..."
+    kubectl logs -l app=descheduler -n kube-system | grep "Number of evicted pods"
     log_step "Descheduler logs checked."
 }
 
 # Function to verify policy configuration
 verify_policy_configuration() {
     log_step "Verifying policy configuration..."
-    kubectl get configmap descheduler-policy-configmap -n kube-system -o yaml
+    kubectl get cm descheduler-policy-configmap -n kube-system -o yaml
     log_step "Policy configuration verified."
 }
 
 # Function to check Descheduler deployment logs
 check_descheduler_deployment_logs() {
     log_step "Checking Descheduler deployment logs..."
-    kubectl logs deployment/descheduler -n kube-system
-    log_step "Descheduler deployment logs checked successfully."
+    kubectl logs -n kube-system deployment/descheduler
+    log_step "Descheduler deployment logs checked."
 }
 
 # Function to verify pod labels
 verify_pod_labels() {
     log_step "Verifying pod labels..."
-    kubectl get pods -n "$namespace" --selector=app=nginx
-    if [[ $? -eq 0 ]]; then
-        log_step "Pod labels verified."
-    else
-        log_step "Error: No pods with label app=nginx found."
-    fi
+    kubectl get pods -n "$namespace" --selector=app=nginx --show-labels
+    log_step "Pod labels verified."
 }
 
 # Function to check cluster size and node utilization
 check_cluster_size_and_utilization() {
     log_step "Checking cluster size and node utilization..."
     kubectl top nodes
-    if [[ $? -eq 0 ]]; then
-        log_step "Cluster size and node utilization checked."
-    else
-        log_step "Warning: Cluster size is too small. Skipping evictions."
-    fi
+    log_step "Cluster size and node utilization checked."
 }
 
 # Function to perform cleanup
@@ -228,19 +220,14 @@ main() {
 
     wait_for_duration "$sleep_duration"
 
-    log_step "Checking Descheduler logs..."
     check_descheduler_logs
 
-    log_step "Verifying policy configuration..."
     verify_policy_configuration
 
-    log_step "Checking Descheduler deployment logs..."
     check_descheduler_deployment_logs
 
-    log_step "Verifying pod labels..."
     verify_pod_labels
 
-    log_step "Checking cluster size and node utilization..."
     check_cluster_size_and_utilization
 
     cleanup "$cluster_name"
