@@ -5,17 +5,6 @@ log_step() {
     echo "=== $1 ==="
 }
 
-# Function to install Docker
-install_docker() {
-    if ! command -v docker &> /dev/null; then
-        log_step "Installing Docker..."
-        # Add installation steps for Docker according to your OS and distribution
-        log_step "Docker installed successfully."
-    else
-        log_step "Docker is already installed."
-    fi
-}
-
 # Function to install kubectl
 install_kubectl() {
     if ! command -v kubectl &> /dev/null; then
@@ -25,42 +14,6 @@ install_kubectl() {
     else
         log_step "kubectl is already installed."
     fi
-}
-
-# Function to install Kind
-install_kind() {
-    if ! command -v kind &> /dev/null; then
-        log_step "Installing Kind..."
-        # Add installation steps for Kind according to your OS and distribution
-        log_step "Kind installed successfully."
-    else
-        log_step "Kind is already installed."
-    fi
-}
-
-# Function to install Kustomize
-install_kustomize() {
-    if ! command -v kustomize &> /dev/null; then
-        log_step "Installing Kustomize..."
-        # Add installation steps for Kustomize according to your OS and distribution
-        log_step "Kustomize installed successfully."
-    else
-        log_step "Kustomize is already installed."
-    fi
-}
-
-# Function to create Kind cluster
-create_cluster() {
-    log_step "Creating Kind cluster ($1)..."
-    kind create cluster --name "$1"
-    log_step "Kind cluster ($1) created successfully."
-}
-
-# Function to label nodes
-label_nodes() {
-    log_step "Labeling nodes..."
-    kubectl label nodes --all topology.kubernetes.io/zone=zone1
-    log_step "Nodes labeled successfully."
 }
 
 # Function to create namespace
@@ -106,7 +59,7 @@ EOF
 # Function to install Descheduler
 install_descheduler() {
     log_step "Installing Descheduler..."
-    kubectl apply -f kubernetes-descheduler.yaml --namespace "$namespace"
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/descheduler/master/examples/kubernetes-descheduler.yaml
     log_step "Descheduler installed successfully."
 }
 
@@ -130,36 +83,30 @@ check_descheduler_logs() {
 # Function to perform cleanup
 cleanup() {
     log_step "Cleaning up..."
-    kind delete cluster --name "$1"
+    kubectl delete deployment nginx-deployment -n "$namespace"
     log_step "Cleanup completed."
 }
 
 # Function to print usage
 print_usage() {
-    echo "Usage: ./demo.sh [--sleep SLEEP_DURATION] [--app APP_NAME] [--namespace NAMESPACE] [--cluster CLUSTER_NAME]"
+    echo "Usage: ./demo.sh [--sleep SLEEP_DURATION] [--namespace NAMESPACE]"
     echo ""
     echo "Options:"
     echo "  --sleep        Sleep duration in seconds before checking Descheduler logs (default: 60)"
-    echo "  --app          Name of the application (default: descheduler-app)"
     echo "  --namespace    Namespace for the application (default: descheduler-demo)"
-    echo "  --cluster      Name of the Kind cluster (default: demo-cluster)"
 }
 
 # Function for main script execution
 main() {
     # Default values
     sleep_duration=60
-    app_name="descheduler-app"
     namespace="descheduler-demo"
-    cluster_name="demo-cluster"
 
     # Parse command-line options
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             --sleep) sleep_duration="$2"; shift ;;
-            --app) app_name="$2"; shift ;;
             --namespace) namespace="$2"; shift ;;
-            --cluster) cluster_name="$2"; shift ;;
             *) echo "Unknown parameter: $1"; print_usage; exit 1 ;;
         esac
         shift
@@ -167,10 +114,7 @@ main() {
 
     log_step "Starting Demo..."
 
-    install_docker
     install_kubectl
-    install_kind
-    install_kustomize
 
     # Check if namespace exists, create it if necessary
     kubectl get namespace "$namespace" &> /dev/null
@@ -180,26 +124,15 @@ main() {
         log_step "Namespace ($namespace) already exists."
     fi
 
-    # Check if cluster exists, create it if necessary
-    kind get clusters | grep "$cluster_name" &> /dev/null
-    if [[ $? -ne 0 ]]; then
-        create_cluster "$cluster_name"
-    else
-        log_step "Kind cluster ($cluster_name) already exists."
-    fi
-
-    label_nodes
-
     deploy_nginx
 
     install_descheduler
 
     wait_for_duration "$sleep_duration"
 
-    log_step "Checking Descheduler logs for evictions..."
     check_descheduler_logs
 
-    cleanup "$cluster_name"
+    cleanup
 
     log_step "Demo completed."
 }
