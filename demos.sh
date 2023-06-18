@@ -106,7 +106,7 @@ EOF
 # Function to install Descheduler
 install_descheduler() {
     log_step "Installing Descheduler..."
-    kubectl apply -f kubernetes-descheduler.yaml
+    kubectl apply -f kubernetes-descheduler.yaml --namespace "$namespace"
     log_step "Descheduler installed successfully."
 }
 

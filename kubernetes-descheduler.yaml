@@ -48,10 +48,12 @@ data:
   policy.yaml: |
     apiVersion: "descheduler/v1alpha2"
     kind: "DeschedulerPolicy"
-    profiles:
-      - name: default
-        enabled:
-          - "RemovePodsViolatingTopologySpreadConstraint"
+    strategies:
+      - name: "RemovePodsViolatingTopologySpreadConstraint"
+        enabled: true
         params:
-          RemovePodsViolatingTopologySpreadConstraint:
-            includeSoftConstraints: false
+          includeSoftConstraints: true
+          targetNamespace: "descheduler-demo"
+          targetKind: "Pod"
+          labelSelector: "app=nginx"
+
