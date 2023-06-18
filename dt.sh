@@ -6,10 +6,11 @@ export KUBECONFIG=~/.kube/config
 # Create a new namespace
 kubectl create namespace demo-namespace
 
-# Get the name of the first node
-NODE_NAME=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+# Get the names of the first two nodes
+NODE_NAME1=$(kubectl get nodes -o jsonpath='{.items[0].metadata.name}')
+NODE_NAME2=$(kubectl get nodes -o jsonpath='{.items[1].metadata.name}')
 
-# Apply a deployment in the demo-namespace
+# Create a deployment in the demo-namespace with skewed scheduling
 cat << EOF > nginx-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -39,7 +40,7 @@ spec:
         ports:
         - containerPort: 80
       nodeSelector:
-        kubernetes.io/hostname: $NODE_NAME
+        kubernetes.io/hostname: $NODE_NAME1
 EOF
 
 kubectl apply -f nginx-deployment.yaml
@@ -54,9 +55,6 @@ kubectl -n demo-namespace get pods -o jsonpath='{range .items[*]}{"\n"}{.metadat
 # Remove nodeSelector from the deployment to allow Kubernetes to spread the pods across nodes
 kubectl patch deployment nginx-deployment -n demo-namespace -p '{"spec":{"template":{"spec":{"nodeSelector":null}}}}'
 
-# Sleep to allow Kubernetes to start rescheduling pods
-sleep 60
-
 # Create descheduler policy
 cat << EOF > descheduler-policy.yaml
 apiVersion: "descheduler.io/v1alpha1"
@@ -64,6 +62,10 @@ kind: "DeschedulerPolicy"
 strategies:
   "RemovePodsViolatingTopologySpreadConstraint":
     enabled: true
+    params:
+      nodeSelection:
+        namespaces:
+        - demo-namespace
 EOF
 
 # Create ConfigMap for the descheduler policy
