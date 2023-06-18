@@ -5,6 +5,17 @@ log_step() {
     echo "=== $1 ==="
 }
 
+# Function to install Docker
+install_docker() {
+    if ! command -v docker &> /dev/null; then
+        log_step "Installing Docker..."
+        # Add installation steps for Docker according to your OS and distribution
+        log_step "Docker installed successfully."
+    else
+        log_step "Docker is already installed."
+    fi
+}
+
 # Function to install kubectl
 install_kubectl() {
     if ! command -v kubectl &> /dev/null; then
@@ -14,13 +25,6 @@ install_kubectl() {
     else
         log_step "kubectl is already installed."
     fi
-}
-
-# Function to set the cluster context
-set_cluster_context() {
-    log_step "Setting cluster context to 'dt'..."
-    kubectl config use-context dt
-    log_step "Cluster context set to 'dt'."
 }
 
 # Function to create namespace
@@ -66,7 +70,7 @@ EOF
 # Function to install Descheduler
 install_descheduler() {
     log_step "Installing Descheduler..."
-    kubectl apply -f kubernetes-descheduler.yaml --namespace "$namespace"
+    kubectl apply -f kubernetes-descheduler.yaml
     log_step "Descheduler installed successfully."
 }
 
@@ -87,10 +91,22 @@ check_descheduler_logs() {
     fi
 }
 
+# Function to verify pod labels
+verify_pod_labels() {
+    log_step "Verifying pod labels..."
+    kubectl get pods -n "$namespace" --selector=app=nginx --show-labels
+}
+
+# Function to check cluster size and node utilization
+check_cluster_size_and_utilization() {
+    log_step "Checking cluster size and node utilization..."
+    kubectl top nodes
+}
+
 # Function to perform cleanup
 cleanup() {
     log_step "Cleaning up..."
-    kubectl delete deployment nginx-deployment -n "$namespace"
+    kubectl delete namespace "$namespace"
     log_step "Cleanup completed."
 }
 
@@ -121,9 +137,8 @@ main() {
 
     log_step "Starting Demo..."
 
+    install_docker
     install_kubectl
-
-    set_cluster_context
 
     # Check if namespace exists, create it if necessary
     kubectl get namespace "$namespace" &> /dev/null
@@ -140,6 +155,10 @@ main() {
     wait_for_duration "$sleep_duration"
 
     check_descheduler_logs
+
+    verify_pod_labels
+
+    check_cluster_size_and_utilization
 
     cleanup
 
