@@ -7,9 +7,8 @@ log_step() {
 
 # Function to install Docker
 install_docker() {
-    log_step "Checking Docker installation..."
     if ! command -v docker &> /dev/null; then
-        log_step "Docker not found. Installing Docker..."
+        log_step "Installing Docker..."
         # Add installation steps for Docker according to your OS and distribution
         log_step "Docker installed successfully."
     else
@@ -19,9 +18,8 @@ install_docker() {
 
 # Function to install kubectl
 install_kubectl() {
-    log_step "Checking kubectl installation..."
     if ! command -v kubectl &> /dev/null; then
-        log_step "kubectl not found. Installing kubectl..."
+        log_step "Installing kubectl..."
         # Add installation steps for kubectl according to your OS and distribution
         log_step "kubectl installed successfully."
     else
@@ -31,9 +29,8 @@ install_kubectl() {
 
 # Function to install Kind
 install_kind() {
-    log_step "Checking Kind installation..."
     if ! command -v kind &> /dev/null; then
-        log_step "Kind not found. Installing Kind..."
+        log_step "Installing Kind..."
         # Add installation steps for Kind according to your OS and distribution
         log_step "Kind installed successfully."
     else
@@ -43,9 +40,8 @@ install_kind() {
 
 # Function to install Kustomize
 install_kustomize() {
-    log_step "Checking Kustomize installation..."
     if ! command -v kustomize &> /dev/null; then
-        log_step "Kustomize not found. Installing Kustomize..."
+        log_step "Installing Kustomize..."
         # Add installation steps for Kustomize according to your OS and distribution
         log_step "Kustomize installed successfully."
     else
@@ -120,55 +116,53 @@ wait_for_duration() {
     sleep "$1"
 }
 
-# Function to check Descheduler logs and perform verifications
+# Function to check Descheduler logs
 check_descheduler_logs() {
     log_step "Checking Descheduler logs..."
-
-    # Verify policy configuration
-    log_step "Verifying policy configuration..."
-    policy_config=$(kubectl get configmap descheduler-policy-configmap -n kube-system -o jsonpath='{.data.policy\.yaml}')
-    if [[ -z "$policy_config" ]]; then
-        log_step "Error: Policy configuration not found."
-    else
-        log_step "Policy configuration found:"
-        log_step "$policy_config"
-    fi
-
-    # Check Descheduler deployment logs
-    log_step "Checking Descheduler deployment logs..."
-    deployment_logs=$(kubectl logs -n kube-system deployment/descheduler)
-    if echo "$deployment_logs" | grep -q "error"; then
-        log_step "Error: Descheduler deployment logs contain error messages."
-    elif echo "$deployment_logs" | grep -q "warning"; then
-        log_step "Warning: Descheduler deployment logs contain warning messages."
-    else
-        log_step "Descheduler deployment logs checked successfully."
-    fi
-
-    # Verify pod labels
-    log_step "Verifying pod labels..."
-    pod_labels=$(kubectl get pods -n "$namespace" --selector=app=nginx -o jsonpath='{range .items[*]}{.metadata.name} {.metadata.labels}{"\n"}{end}')
-    if [[ -z "$pod_labels" ]]; then
-        log_step "Error: No pods with label app=nginx found."
-    else
-        log_step "Pod labels verified:"
-        log_step "$pod_labels"
-    fi
-
-    # Check cluster size and node utilization
-    log_step "Checking cluster size and node utilization..."
-    cluster_size=$(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | wc -l)
-    if [[ "$cluster_size" -lt 2 ]]; then
-        log_step "Warning: Cluster size is too small. Skipping evictions."
-    else
-        node_utilization=$(kubectl top nodes)
-        log_step "Node utilization:"
-        log_step "$node_utilization"
-    fi
-
+    kubectl logs -l app=descheduler -n kube-system
     log_step "Descheduler logs checked."
 }
 
+# Function to verify policy configuration
+verify_policy_configuration() {
+    log_step "Verifying policy configuration..."
+    policy_config=$(kubectl get configmap descheduler-policy-configmap -n kube-system -o yaml)
+    log_step "Policy configuration found:"
+    echo "$policy_config"
+}
+
+# Function to check Descheduler deployment logs
+check_descheduler_deployment_logs() {
+    log_step "Checking Descheduler deployment logs..."
+    kubectl logs -n kube-system deployment/descheduler
+    log_step "Descheduler deployment logs checked successfully."
+}
+
+# Function to verify pod labels
+verify_pod_labels() {
+    log_step "Verifying pod labels..."
+    pod_labels=$(kubectl get pods -n "$namespace" --selector=app=nginx -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.labels.app}{"\n"}{end}')
+    if [[ -z "$pod_labels" ]]; then
+        log_step "Error: No pods with label app=nginx found."
+    else
+        log_step "Pod labels:"
+        echo -e "$pod_labels"
+    fi
+}
+
+# Function to check cluster size and node utilization
+check_cluster_size_and_utilization() {
+    log_step "Checking cluster size and node utilization..."
+    cluster_size=$(kubectl get nodes --no-headers | wc -l)
+    if (( cluster_size < 2 )); then
+        log_step "Warning: Cluster size is too small. Skipping evictions."
+    else
+        log_step "Cluster size: $cluster_size"
+        node_utilization=$(kubectl top nodes)
+        log_step "Node utilization:"
+        echo "$node_utilization"
+    fi
+}
 
 # Function to perform cleanup
 cleanup() {
@@ -239,7 +233,20 @@ main() {
 
     wait_for_duration "$sleep_duration"
 
+    log_step "Checking Descheduler logs..."
     check_descheduler_logs
+
+    log_step "Verifying policy configuration..."
+    verify_policy_configuration
+
+    log_step "Checking Descheduler deployment logs..."
+    check_descheduler_deployment_logs
+
+    log_step "Verifying pod labels..."
+    verify_pod_labels
+
+    log_step "Checking cluster size and node utilization..."
+    check_cluster_size_and_utilization
 
     cleanup "$cluster_name"
 
