@@ -59,25 +59,44 @@ sleep 60
 
 # Create descheduler policy
 cat << EOF > descheduler-policy.yaml
-apiVersion: "descheduler/v1alpha2"
+apiVersion: "descheduler.io/v1alpha1"
 kind: "DeschedulerPolicy"
-profiles:
-  - name: ProfileName
-    pluginConfig:
-    - name: "RemovePodsViolatingTopologySpreadConstraint"
-      args:
-        constraints:
-          - DoNotSchedule
-          - ScheduleAnyway
-    plugins:
-      balance:
-        enabled:
-          - "RemovePodsViolatingTopologySpreadConstraint"
+strategies:
+  "RemovePodsViolatingTopologySpreadConstraint":
+    enabled: true
 EOF
 
-# Apply the policy and run the descheduler
-kubectl apply -f descheduler-policy.yaml -n kube-system
-descheduler --policy-file descheduler-policy.yaml --kubeconfig $KUBECONFIG --v 4
+# Create ConfigMap for the descheduler policy
+kubectl create configmap descheduler-policy --from-file=descheduler-policy.yaml -n kube-system
+
+# Run the descheduler job
+cat << EOF | kubectl apply -f -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: descheduler-job
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      serviceAccountName: descheduler-sa
+      containers:
+      - name: descheduler
+        image: k8s.gcr.io/descheduler/descheduler:v0.22.0
+        volumeMounts:
+        - mountPath: /policy-dir
+          name: policy-volume
+        command:
+        - "/bin/descheduler"
+        - "--policy-config-file"
+        - "/policy-dir/policy.yaml"
+        - "--v=4"
+      restartPolicy: Never
+      volumes:
+      - name: policy-volume
+        configMap:
+          name: descheduler-policy
+EOF
 
 # Sleep to allow pods to be rescheduled
 sleep 60
@@ -86,3 +105,8 @@ sleep 60
 echo "Pod distribution after descheduler run:"
 kubectl -n demo-namespace get pods -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{":\t"}{.spec.nodeName}{end}' | sort
 
+# Cleanup
+kubectl delete -f nginx-deployment.yaml
+kubectl delete configmap descheduler-policy -n kube-system
+kubectl delete job descheduler-job -n kube-system
+kubectl delete namespace demo-namespace
