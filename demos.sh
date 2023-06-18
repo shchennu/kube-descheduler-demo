@@ -133,22 +133,30 @@ verify_policy_configuration() {
 # Function to check Descheduler deployment logs
 check_descheduler_deployment_logs() {
     log_step "Checking Descheduler deployment logs..."
-    kubectl logs -n kube-system deployment/descheduler
+    kubectl logs deployment/descheduler -n kube-system
     log_step "Descheduler deployment logs checked successfully."
 }
 
 # Function to verify pod labels
 verify_pod_labels() {
     log_step "Verifying pod labels..."
-    kubectl get pods -n "$namespace" --selector=app=nginx --show-labels
-    log_step "Pod labels verified."
+    kubectl get pods -n "$namespace" --selector=app=nginx
+    if [[ $? -eq 0 ]]; then
+        log_step "Pod labels verified."
+    else
+        log_step "Error: No pods with label app=nginx found."
+    fi
 }
 
 # Function to check cluster size and node utilization
 check_cluster_size_and_utilization() {
     log_step "Checking cluster size and node utilization..."
     kubectl top nodes
-    log_step "Cluster size and node utilization checked."
+    if [[ $? -eq 0 ]]; then
+        log_step "Cluster size and node utilization checked."
+    else
+        log_step "Warning: Cluster size is too small. Skipping evictions."
+    fi
 }
 
 # Function to perform cleanup
