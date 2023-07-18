@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# Set the correct context
+kubectl config use-context dev1
+
+# Apply the descheduler CronJob configuration
+cat <<EOF | kubectl apply -f -
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: descheduler-cronjob
+  namespace: kube-system
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: descheduler
+            image: k8s.gcr.io/descheduler/descheduler:v0.24.1
+            args:
+            - --policy-config-file
+            - /policy-dir/policy.yaml
+            - --v
+            - '3'
+            volumeMounts:
+            - name: policy-volume
+              mountPath: "/policy-dir"
+          volumes:
+          - name: policy-volume
+            configMap:
+              name: descheduler-policy
+          restartPolicy: Never
+EOF
+
+# Create descheduler policy configmap
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: descheduler-policy
+  namespace: kube-system
+data:
+  policy.yaml: |
+    apiVersion: "descheduler/v1alpha1"
+    kind: "DeschedulerPolicy"
+    strategies:
+      "RemovePodsViolatingTopologySpreadConstraint":
+        enabled: true
+        params:
+          namespaces:
+            include:
+            - "boltx-test"
+EOF
+
+# Create the namespace
+kubectl create namespace boltx-test
+
+# Create the pods
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+  namespace: boltx-test
+  labels:
+    app: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  - name: busybox
+    image: busybox
+EOF
+
+# Watch the pods in the boltx-test namespace
+kubectl get pods -n boltx-test --watch
